@@ -8,6 +8,8 @@
 *.so
 *.dylib
 .env
+*air.toml
+/tmp
 
 # Test binary, built with `go test -c`
 *.test
