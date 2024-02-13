@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"go-auth-service/internal/server"
+
+	"github.com/ostheperson/go-auth-service/internal/server"
 )
 
 func main() {
-
 	server := server.NewServer()
 
 	err := server.ListenAndServe()

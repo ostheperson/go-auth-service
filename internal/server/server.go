@@ -2,34 +2,34 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
-	"go-auth-service/internal/database"
+	"github.com/ostheperson/go-auth-service/internal/domain"
 )
 
-type Server struct {
-	port int
-	db   database.Service
-}
-
 func NewServer() *http.Server {
-	port, _ := strconv.Atoi(os.Getenv("PORT"))
-	NewServer := &Server{
-		port: port,
-		db:   database.New(),
+	l := log.New(os.Stdout, "auth-api ", log.LstdFlags)
+	env := NewEnv()
+	db := New(env)
+	// db.GetClient().Migrator().DropTable("users")
+	db.GetClient().AutoMigrate(&domain.Users{})
+	NewServer := &domain.Server{
+		Port: env.PORT,
+		Db:   db,
+		Env:  env,
+		L:    l,
 	}
 
-	// Declare Server config
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", NewServer.port),
-		Handler:      NewServer.RegisterRoutes(),
+		Addr:         fmt.Sprintf(":%d", NewServer.Port),
+		Handler:      RegisterRoutes(NewServer),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
+		ErrorLog:     l,
 	}
 
 	return server
