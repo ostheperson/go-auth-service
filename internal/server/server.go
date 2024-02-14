@@ -7,13 +7,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/ostheperson/go-auth-service/internal/database"
 	"github.com/ostheperson/go-auth-service/internal/domain"
 )
 
 func NewServer() *http.Server {
 	l := log.New(os.Stdout, "auth-api ", log.LstdFlags)
 	env := NewEnv()
-	db := New(env)
+	db := database.New(env)
 	// db.GetClient().Migrator().DropTable("users")
 	db.GetClient().AutoMigrate(&domain.Users{})
 	NewServer := &domain.Server{

@@ -59,7 +59,12 @@ func (s *AuthHandler) SignUp(c *gin.Context) {
 		return
 	}
 
-	user = domain.Users{Email: newUser.Email, Password: string(hash), Username: newUser.Username}
+	user = domain.Users{
+		Email:    newUser.Email,
+		Password: string(hash),
+		Role:     domain.UserRole,
+		Username: newUser.Username,
+	}
 	result := s.Db.GetClient().Create(&user)
 
 	if result.Error != nil {
@@ -88,21 +93,75 @@ func (s *AuthHandler) SignIn(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// if c.Bind(&details) != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error": helper.ErrFailedReadBody,
-	// 	})
-	// 	return
-	// }
 	user := domain.Users{}
 	if err := s.Db.GetClient().Where("email = ? OR username = ?", details.Email, details.Username).First(&user).Error; err != nil {
 		if err != gorm.ErrRecordNotFound {
 			if user.Username == details.Username {
-				c.JSON(http.StatusBadRequest, gin.H{"error": helper.ErrExistingUsername})
+				c.JSON(http.StatusBadRequest, gin.H{"error": helper.ErrNoExistingUsername})
 				return
 			}
 			if user.Email == details.Email {
-				c.JSON(http.StatusBadRequest, gin.H{"error": helper.ErrExistingEmail})
+				c.JSON(http.StatusBadRequest, gin.H{"error": helper.ErrNoExistingEmail})
+				return
+			}
+		}
+	}
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(details.Password)) != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+	accessToken, err := util.CreateAccessToken(
+		&user,
+		s.Env.AccessTokenSecret,
+		s.Env.AccessTokenExpiryHour,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	refreshToken, err := util.CreateRefreshToken(
+		&user,
+		s.Env.RefreshTokenSecret,
+		s.Env.RefreshTokenExpiryHour,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	loginResponse := LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	c.JSON(http.StatusCreated, domain.Response{
+		Message: helper.Success,
+		Data:    loginResponse,
+	})
+}
+
+func (s *AuthHandler) SignInAdmin(c *gin.Context) {
+	var details struct {
+		Email    string
+		Username string
+		Password string
+	}
+
+	err := c.ShouldBind(&details)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	user := domain.Users{}
+	if err := s.Db.GetClient().
+		Where("email = ? OR username = ? AND role = ?", details.Email, details.Username, domain.AdminRole).
+		First(&user).Error; err != nil {
+		if err != gorm.ErrRecordNotFound {
+			if user.Username == details.Username {
+				c.JSON(http.StatusBadRequest, gin.H{"error": helper.ErrNoExistingUsername})
+				return
+			}
+			if user.Email == details.Email {
+				c.JSON(http.StatusBadRequest, gin.H{"error": helper.ErrNoExistingEmail})
 				return
 			}
 		}

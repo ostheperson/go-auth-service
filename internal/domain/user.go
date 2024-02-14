@@ -16,7 +16,7 @@ type Users struct {
 	Lastname   string         `                                              json:"last_name"`
 	Bio        string         `                                              json:"bio,"`
 	AvatarURL  string         `                                              json:"avatar_url"`
-	Role       string         `                                              json:"role"`
+	Role       Role           `                                              json:"role"`
 	IsVerified bool           `                                              json:"is_verified"`
 	VerifiedAt time.Time      `                                              json:"verified_at"`
 	CreatedAt  time.Time      `                                              json:"created_at"`

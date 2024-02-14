@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ostheperson/go-auth-service/internal/domain"
 	"github.com/ostheperson/go-auth-service/internal/helper"
+	"github.com/ostheperson/go-auth-service/internal/util"
 )
 
 type UsersHandler struct {
@@ -21,10 +23,10 @@ func NewUsersHandler(s *domain.Server) *UsersHandler {
 
 func (s *UsersHandler) GetUsers(c *gin.Context) {
 	var users []domain.Users
+	limit, page := util.GetPaginationParams(c)
 
-	// TODO: Add pagination
 	// TODO: Add filtering options
-	if err := s.Db.GetClient().Find(&users).Error; err != nil {
+	if err := s.Db.GetClient().Limit(limit).Offset(page - 1).Find(&users).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": helper.ErrFailGetUsers})
 		return
 	}
@@ -36,17 +38,21 @@ func (s *UsersHandler) GetUsers(c *gin.Context) {
 }
 
 func (s *UsersHandler) GetUser(c *gin.Context) {
-	claims, exists := c.Get("payload")
-	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Claims not found in context"})
+	payload, err := util.GetPayload(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": helper.ErrFailParsePayload})
 		return
 	}
-	s.L.Print(claims)
 	id := c.Param("id")
+	if fmt.Sprint(payload.ID) != id && payload.Role != domain.AdminRole {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": helper.ErrUnauthorized})
+		return
+	}
 	user := domain.Users{}
 	if err := s.Db.GetClient().First(&user, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(404, gin.H{"error": helper.NotFound("users")})
+			return
 		}
 		c.JSON(500, gin.H{"error": helper.ErrInternalError})
 		return
@@ -104,7 +110,16 @@ func (s *UsersHandler) UpdateUser(c *gin.Context) {
 }
 
 func (s *UsersHandler) RemoveUser(c *gin.Context) {
+	payload, err := util.GetPayload(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	id := c.Param("id")
+	if fmt.Sprint(payload.ID) != id {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": helper.ErrUnauthorized})
+		return
+	}
 	if err := s.Db.GetClient().Model(&domain.Users{}).Where("id = ?", id).Update("deleted_at", time.Now()).Error; err != nil {
 		c.JSON(500, gin.H{"error": helper.ErrFailDelUser})
 		return

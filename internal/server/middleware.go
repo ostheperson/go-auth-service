@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ostheperson/go-auth-service/internal/domain"
 	"github.com/ostheperson/go-auth-service/internal/util"
 )
 
@@ -15,6 +16,13 @@ const (
 	authorizationTypeBearer = "bearer"
 	authorizationPayloadKey = "payload"
 )
+
+func AuthMiddleware(secret string, roles ...domain.Role) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		JwtAuthMiddleware(secret)(c)
+		RoleMiddleware(roles...)(c)
+	}
+}
 
 func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -51,5 +59,30 @@ func JwtAuthMiddleware(secret string) gin.HandlerFunc {
 		}
 		c.Set(authorizationPayloadKey, payload)
 		c.Next()
+	}
+}
+
+func RoleMiddleware(roles ...domain.Role) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims, exists := c.Get(authorizationPayloadKey)
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Claims not found in context"})
+			return
+		}
+		payload, ok := claims.(*util.JwtCustomClaims)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not parse claims"})
+			return
+		}
+		userRole := payload.Role
+
+		for _, role := range roles {
+			if role == userRole {
+				c.Next()
+				return
+			}
+		}
+
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 	}
 }

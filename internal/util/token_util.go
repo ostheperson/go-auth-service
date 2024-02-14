@@ -10,8 +10,9 @@ import (
 )
 
 type JwtCustomClaims struct {
-	Username string `json:"username"`
-	ID       uint   `json:"id"`
+	Username string      `json:"username"`
+	ID       uint        `json:"id"`
+	Role     domain.Role `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -29,6 +30,7 @@ func CreateAccessToken(
 	claims := &JwtCustomClaims{
 		Username: user.Username,
 		ID:       user.ID,
+		Role:     user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: exp,
 		},
@@ -89,14 +91,15 @@ func VerifyAndExtract(requestToken string, secret string) (*JwtCustomClaims, err
 		return nil, err
 	}
 
-	claims, ok := token.Claims.(JwtCustomClaims)
+	claims, ok := token.Claims.(*JwtCustomClaims)
 
 	if !ok && !token.Valid {
-		return &claims, fmt.Errorf("Invalid Token")
+		return claims, fmt.Errorf("Invalid Token")
 	}
 
+	// fmt.Print(token.Valid)
 	if ok && token.Valid {
-		return &claims, nil
+		return claims, nil
 	}
-	return &claims, nil
+	return claims, fmt.Errorf("got some error")
 }

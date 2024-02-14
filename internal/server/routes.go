@@ -12,33 +12,43 @@ import (
 func RegisterRoutes(s *domain.Server) http.Handler {
 	r := gin.Default()
 	// TODO: add role middleware
-	// r.GET("/", s.HelloWorldHandler)
-	// r.GET("/health", s.healthHandler)
+	hh := NewHelloHandler(s)
+	r.GET("/", hh.HelloWorldHandler)
+	r.GET("/health", hh.healthHandler)
 
 	ah := handlers.NewAuthHandler(s)
-	r.POST("/account/signup", ah.SignUp)
-	r.POST("/account/signin", ah.SignIn)
+	r.POST("/auth/user/signup", ah.SignUp)
+	r.POST("/auth/user/signin", ah.SignIn)
+	r.POST("/auth/admin/signin", ah.SignIn)
 
-	protected := r.Group("/v1")
+	protected := r.Group("")
 	protected.Use(JwtAuthMiddleware(s.Env.AccessTokenSecret))
 	uh := handlers.NewUsersHandler(s)
 
-	protected.GET("/users", uh.GetUsers)
-	protected.GET("/users/:id", uh.GetUser)
-	protected.PATCH("/users/:id", uh.UpdateUser)
-	protected.DELETE("/users/:id", uh.RemoveUser)
-	protected.DELETE("/users/all", uh.GetUsers)
+	protected.GET("/users", RoleMiddleware(domain.AdminRole), uh.GetUsers)
+	protected.GET("/users/:id", RoleMiddleware(domain.AdminRole, domain.UserRole), uh.GetUser)
+	protected.PATCH("/users/:id", RoleMiddleware(domain.AdminRole, domain.UserRole), uh.UpdateUser)
+	protected.DELETE("/users/:id", RoleMiddleware(domain.AdminRole, domain.UserRole), uh.RemoveUser)
+	protected.DELETE("/users/all", RoleMiddleware(domain.AdminRole))
 
 	return r
 }
 
-// func (s *Server) HelloWorldHandler(c *gin.Context) {
-// 	resp := make(map[string]string)
-// 	resp["message"] = "live"
-//
-// 	c.JSON(http.StatusOK, resp)
-// }
-//
-// func (s *Server) healthHandler(c *gin.Context) {
-// 	c.JSON(http.StatusOK, s.db.Health())
-// }
+type HelloHandler struct {
+	*domain.Server
+}
+
+func NewHelloHandler(s *domain.Server) *HelloHandler {
+	return &HelloHandler{Server: s}
+}
+
+func (s *HelloHandler) HelloWorldHandler(c *gin.Context) {
+	resp := make(map[string]string)
+	resp["message"] = "live"
+
+	c.JSON(http.StatusOK, resp)
+}
+
+func (s *HelloHandler) healthHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, s.Db.Health())
+}
