@@ -13,6 +13,8 @@ const (
 	// Auth
 	ErrFailHash     = "Failed to hash password"
 	ErrUnauthorized = "Action not allowed"
+	ErrInvalidToken = "Invalid Token"
+	ErrExpiredToken = "Expired Token"
 
 	// User
 	ErrExistingUsername   = "Existing username"

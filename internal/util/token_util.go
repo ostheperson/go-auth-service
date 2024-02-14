@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/ostheperson/go-auth-service/internal/domain"
+	"github.com/ostheperson/go-auth-service/internal/helper"
 )
 
 type JwtCustomClaims struct {
@@ -94,12 +95,11 @@ func VerifyAndExtract(requestToken string, secret string) (*JwtCustomClaims, err
 	claims, ok := token.Claims.(*JwtCustomClaims)
 
 	if !ok && !token.Valid {
-		return claims, fmt.Errorf("Invalid Token")
+		return claims, fmt.Errorf(helper.ErrInvalidToken)
 	}
 
-	// fmt.Print(token.Valid)
-	if ok && token.Valid {
+	if token.Valid {
 		return claims, nil
 	}
-	return claims, fmt.Errorf("got some error")
+	return nil, fmt.Errorf("internal error")
 }

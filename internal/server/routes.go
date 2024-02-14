@@ -11,7 +11,7 @@ import (
 
 func RegisterRoutes(s *domain.Server) http.Handler {
 	r := gin.Default()
-	// TODO: add role middleware
+
 	hh := NewHelloHandler(s)
 	r.GET("/", hh.HelloWorldHandler)
 	r.GET("/health", hh.healthHandler)
