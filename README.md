@@ -18,7 +18,7 @@ production ready auth service with gin server and gorm orm
 - [ ] google oauth2.0
 - [ ] facebook oauth2.0
 
-### Credits
+### Credit
 
 - [go-blueprint](https://github.com/Melkeydev/go-blueprint)
 - [simplebank](https://github.dev/techschool/simplebank)
