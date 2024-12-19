@@ -14,7 +14,7 @@ production ready auth service with gin server and gorm orm
 - GET, PATCH, DELETE `/users/:id`
 
 ## Authentication
-- [x] local jwt
+- [x] local jwts
 - [ ] google oauth2.0
 - [ ] facebook oauth2.0
 
